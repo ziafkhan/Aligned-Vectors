@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#Wordvecs
+ft.en.300.txt
+ft.hi.300.txt
