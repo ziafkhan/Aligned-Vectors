@@ -131,3 +131,4 @@ dmypy.json
 #Wordvecs
 ft.en.300.txt
 ft.hi.300.txt
+ft.hi_aligned_en.300

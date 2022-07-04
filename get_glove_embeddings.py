@@ -27,22 +27,29 @@ class glove():
 	"""
 
 	def __init__(self, glove_path:str, validate:bool=True):
+		"""
+		Parameters
+		----------
+		glove_path : path to text file containing vectors
+		validate : If true, check all lines for consistency and correct character encoding
+		"""
 		self.glove_path = glove_path
 
-		with open(self.glove_path,'r') as glove_file:
+		with open(self.glove_path,'r',encoding='utf-8') as glove_file: #using utf-8 because different 
+																	   #languages have different symbols
 			self.glove_dimensionality = len(glove_file.readline().split())-1 #first item is the word
 		self.glove_file_lines = sum(1 for i in open(self.glove_path,'rb')) 
 		self.number_of_words = self.glove_file_lines + 2 #adding a plus 2 for future padding and OOV words
 		
-		with open(self.glove_path,'r') as glove_file:
+		with open(self.glove_path,'r',encoding='utf-8') as glove_file:
 			self.glove_dimensionality = len(glove_file.readline().split())-1 #first item is the word
 
 		if validate:
 			self.__validate_word_embeddings()
 			#Have to redo everything incase errors were found.
-			self.glove_file_lines = sum(1 for i in open(self.glove_path,'rb')) 
+			self.glove_file_lines = sum(1 for i in open(self.glove_path,'rb',encoding='utf-8')) 
 			self.number_of_words = self.glove_file_lines + 2 #adding a plus 2 for future padding and OOV words
-			with open(self.glove_path,'r') as glove_file: 
+			with open(self.glove_path,'r',encoding='utf-8') as glove_file: 
 				self.glove_dimensionality = len(glove_file.readline().split())-1 #first item is the word
 		
 		self.word_to_num = {} #May be used as a part of a tokenizing dict as long as the text file is unchanged
@@ -60,7 +67,7 @@ class glove():
 		errors = False
 		path = self.glove_path
 		print ("Validating...")
-		with open(path,'r') as embedding_file:
+		with open(path,'r',encoding="utf-8") as embedding_file:
 			for line in tqdm(embedding_file,total=self.glove_file_lines):
 				word = line.split()[0]
 				if type(word) is str and len(line.split())==self.glove_dimensionality+1:
@@ -90,8 +97,8 @@ class glove():
 		new_file_path = self.glove_path+"_2"
 		path=self.glove_path
 		lines_removed = 0
-		with open(path,'r') as embedding_file:
-			with open(new_file_path,'w') as new_embedding_file:
+		with open(path,'r',encoding='utf-8') as embedding_file:
+			with open(new_file_path,'w',encoding='utf-8') as new_embedding_file:
 				for line in tqdm(embedding_file, total=self.glove_file_lines):
 					word = line.split()[0]
 					if type(word) is str and len(line.split())==self.glove_dimensionality+1:
@@ -124,7 +131,7 @@ class glove():
 		words will have their own representation.
 		"""
 		path=self.glove_path
-		with open(path,'r') as embedding_file:
+		with open(path,'r',encoding='utf-8') as embedding_file:
 			vector_loc = 1 # position 0 is padding
 			for line in tqdm(embedding_file,total = self.glove_file_lines):
 				self.word_to_num[line.split()[0].lower()] = vector_loc #line.split()[0] is just the first word of the line , which is the actual word
@@ -145,8 +152,12 @@ class glove():
 		print ("Successfully Loaded embedding file.")
 
 
-	def apply_transform(self, transform):
+	def apply_transform(self, transform:np.array) -> None:
 		"""
+		Parameters
+		----------
+		transform : Numpy transformation matrix
+
 		Apply the given transformation to the vector space
 		Right-multiplies given transform with embeddings E:
 			E = E * transform
@@ -157,11 +168,13 @@ class glove():
 		#self.glove_embedding_vector[0] = np.zeros(self.glove_dimensionality)
 
 	
-	def similarity(self, word_1, word_2):
+	def similarity(self, word_1:str, word_2:str) -> float:
 		"""
+		Parameters
+		----------
+		word_1 : First word
+		word_2 : Second word
 		Returns the cosine similarity between two words.
-		word_1 - type - str
-		word_2 - type - str
 		"""
 		if len(set([word_1.lower(),word_2.lower()]) - self.words)>0:
 			raise KeyError("Atleast one of the words missing in word embeddings")
@@ -170,12 +183,14 @@ class glove():
 			self.glove_embedding_vector[self.word_to_num[word_2],:])
 
 	
-	def most_similar(self, word, count=10):
+	def most_similar(self, word:str, count:int=10) -> list:
 		"""
+		Parameters
+		----------
+		word : The word we want to find similar words to
+		count : Count of similar words required
 		Returns the "count" most similar words to an input "word" 
 		based on cosine distance between the vectors.
-		word - type - str
-		count - type - int
 		"""
 		assert type(word) is str,"Item needs to be type str, found {}".format(type(word))
 		if word not in self.words:
@@ -192,16 +207,24 @@ class glove():
 		return return_list[1:]
 
 
-	def save_to_file(self,file_name=None):
+	def save_to_file(self,file_name:str=None,mode:str="w"):
 		"""
+		Parameters
+		----------
+		file_name : Name of file to write vectors into
+		mode : Has to be one of "w" or "a". Appending is used when adding vectors to a previous file.
 		Saves current embedding vector in glove file format.
 		Does not include the PADDING and the OOV vectors.
 		"""
-
-		if file_name is None or file_name==self.glove_path:
+		assert mode in ["w","a"], "Mode has to be one of w or a."
+		if mode == "w" and (file_name is None or file_name==self.glove_path):
 			print("Overwriting original file")
 			file_name = self.glove_path
-		with open(file_name,"w") as file:
+		with open(file_name,mode,encoding="utf-8") as file:
+			if mode=="w":
+				print("Creating new file and writing.")
+			elif mode=="a":
+				print("Now appending to file")
 			for num in tqdm(range(self.number_of_words-2)):
 				num = num+1
 				word = self.num_to_word[num]
@@ -212,11 +235,11 @@ class glove():
 				file.write(text+"\n")
 
 
-	def __contains__(self, index):
+	def __contains__(self, index:str):
 		return index in self.words
 	
 
-	def __getitem__(self,index):
+	def __getitem__(self,index:str):
 		assert type(index) is str,"Item needs to be type str, found {}".format(type(index))
 		if index in self.words:
 			return self.glove_embedding_vector[self.word_to_num[index],:]
